@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
-final String esp32Ip = "http://192.168.1.114"; // ใช้ IP Address ที่ได้จาก Serial Monitor ของ ESP32
+final String esp32Ip = "http://192.168.1.114";
+
+  const MyApp({super.key}); // ใช้ IP Address ที่ได้จาก Serial Monitor ของ ESP32
 
   Future<void> setPumpState(bool isOn) async {
     final state = isOn ? "true" : "false";
