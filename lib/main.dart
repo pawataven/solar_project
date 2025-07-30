@@ -1,39 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:solar_project/services/main_ctrl.dart';
+import 'screens/home_screen.dart';
 
-void main() => runApp(MyApp());
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
-final String esp32Ip = "http://192.168.1.114";
+  const MyApp({super.key});
 
-  const MyApp({super.key}); // ใช้ IP Address ที่ได้จาก Serial Monitor ของ ESP32
-
-  Future<void> setPumpState(bool isOn) async {
-    final state = isOn ? "true" : "false";
-    final url = Uri.parse('$esp32Ip/pump?state=$state');
-    await http.get(url);
-  }
+  final String esp32Ip =
+      "http://192.168.1.114"; //กำหนดค่า IP ที่เดียวกับ wifi ที่ seting ค่าใน ESP32
 
   @override
   Widget build(BuildContext context) {
+    final esp32Service = Esp32Service(esp32Ip: esp32Ip);
+
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
+
       home: Scaffold(
-        appBar: AppBar(title: Text('ESP32 Controller')),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                onPressed: () => setPumpState(true),
-                child: Text("เปิด"),
-              ),
-              ElevatedButton(
-                onPressed: () => setPumpState(false),
-                child: Text("ปิด"),
-              ),
-            ],
-          ),
-        ),
+        body: HomeScreen(esp32Service: esp32Service),
       ),
     );
   }
