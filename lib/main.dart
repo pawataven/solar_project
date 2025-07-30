@@ -7,8 +7,7 @@ void main() => runApp(const MyApp());
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  final String esp32Ip =
-      "http://192.168.1.114"; //กำหนดค่า IP ที่เดียวกับ wifi ที่ seting ค่าใน ESP32
+  final String esp32Ip = "http://192.168.1.114";
 
   @override
   Widget build(BuildContext context) {
@@ -16,10 +15,11 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-
-      home: Scaffold(
-        body: HomeScreen(esp32Service: esp32Service),
+      theme: ThemeData(
+        fontFamily: 'Poppins',
+        scaffoldBackgroundColor: Colors.grey[100],
       ),
+      home: HomeScreen(esp32Service: esp32Service),
     );
   }
 }
