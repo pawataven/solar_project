@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:solar_project/screens/ScheduleScreen.dart';
+import 'package:solar_project/screens/history_screen.dart';
+import 'package:solar_project/screens/settings_screen.dart';
 import 'package:solar_project/services/main_ctrl.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -198,7 +200,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (index == 1) {
       // 📜 ไปหน้า "ประวัติ"
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const HistoryScreen()),
+      );
     } else if (index == 2) {
       // ⏰ ไปหน้า "ตั้งเวลา"
       Navigator.push(
@@ -207,7 +212,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     } else if (index == 3) {
       // ⚙️ ไปหน้า "ตั้งค่า"
-      // Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      );
     }
   }
 
