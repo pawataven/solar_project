@@ -4,6 +4,7 @@ import 'package:solar_project/screens/ScheduleScreen.dart';
 import 'package:solar_project/screens/history_screen.dart';
 import 'package:solar_project/screens/settings_screen.dart';
 import 'package:solar_project/services/main_ctrl.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.esp32Service});
@@ -17,6 +18,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _debounceTimer;
   bool _isSendingCommand = false;
 
+  // ✅ เพิ่ม AudioPlayer
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
   // ✅ ข้อมูลที่จะแสดงบนหน้า
   String lastCleaningDate = "ยังไม่เคยทำความสะอาด";
   int cleaningCount = 0;
@@ -24,13 +28,13 @@ class _HomeScreenState extends State<HomeScreen> {
   String pumpStatus = "พร้อมใช้งาน";
 
   /// ฟังก์ชันสั่ง ESP32
+  /// ฟังก์ชันสั่ง ESP32
   void sendCommand() {
     setState(() {
       _isSendingCommand = true;
       pumpStatus = "กำลังทำความสะอาด...";
     });
 
-    // debounce ป้องกันกดรัว
     if (_debounceTimer?.isActive ?? false) {
       _debounceTimer!.cancel();
     }
@@ -46,6 +50,14 @@ class _HomeScreenState extends State<HomeScreen> {
           cleaningCount++;
           pumpStatus = "ทำความสะอาดเสร็จแล้ว ✅";
         });
+
+        // 🔊 ✅ เล่นเสียงแจ้งเตือนเมื่อทำความสะอาดเสร็จ
+        await _audioPlayer.play(AssetSource('sounds/done.mp3'), volume: 1.0);
+
+        // ✅ แสดง SnackBar
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("สั่งงาน ESP32 เสร็จแล้ว ✅")),
+        );
       } catch (e) {
         print('❌ Error: $e');
         setState(() {
@@ -55,9 +67,6 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isSendingCommand = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("สั่งงาน ESP32 เสร็จแล้ว ✅")),
-        );
       }
     });
   }
@@ -99,8 +108,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ElevatedButton(
               onPressed: _isSendingCommand ? null : sendCommand,
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    _isSendingCommand ? Colors.grey[400] : Colors.blue,
+                backgroundColor: _isSendingCommand
+                    ? Colors.grey[400]
+                    : Colors.blue,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30),
                 ),
@@ -109,24 +119,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   vertical: 18,
                 ),
               ),
-              child:
-                  _isSendingCommand
-                      ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 3,
-                        ),
-                      )
-                      : const Text(
-                        "START CLEANING",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+              child: _isSendingCommand
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
                       ),
+                    )
+                  : const Text(
+                      "START CLEANING",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
             ),
 
             const SizedBox(height: 30),
