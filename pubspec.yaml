@@ -38,6 +38,7 @@ dependencies:
   percent_indicator: ^4.2.5
   google_fonts: ^6.2.1
   audioplayers: ^6.5.0
+  firebase_core: ^4.0.0
 
 dev_dependencies:
   flutter_test:
