@@ -13,7 +13,8 @@ Future<void> main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  final String esp32Ip = "http://192.168.1.114";
+  final String esp32Ip = "http://192.168.59.174";
+  // 192.168.188.174
 
   @override
   Widget build(BuildContext context) {
