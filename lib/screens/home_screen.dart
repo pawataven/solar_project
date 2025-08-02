@@ -29,10 +29,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   /// ฟังก์ชันสั่ง ESP32
   /// ฟังก์ชันสั่ง ESP32
-  void sendCommand() {
+  /// 
+  
+  void sendCommand() async {
     setState(() {
       _isSendingCommand = true;
+
       pumpStatus = "กำลังทำความสะอาด...";
+      _audioPlayer.play(AssetSource('sounds/start.mp3'), volume: 1.0);
     });
 
     if (_debounceTimer?.isActive ?? false) {
@@ -53,7 +57,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // 🔊 ✅ เล่นเสียงแจ้งเตือนเมื่อทำความสะอาดเสร็จ
         await _audioPlayer.play(AssetSource('sounds/done.mp3'), volume: 1.0);
-
         // ✅ แสดง SnackBar
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("สั่งงาน ESP32 เสร็จแล้ว ✅")),
