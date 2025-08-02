@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:solar_project/screens/ScheduleScreen.dart';
 import 'package:solar_project/screens/history_screen.dart';
 import 'package:solar_project/screens/settings_screen.dart';
 import 'package:solar_project/services/main_ctrl.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.esp32Service});
@@ -19,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSendingCommand = false;
 
   final AudioPlayer _audioPlayer = AudioPlayer();
-
+  String date = "";
   String lastCleaningDate = "ยังไม่เคยทำความสะอาด";
   int cleaningCount = 0;
   double waterLevel = 75; // mock data (เช่น % น้ำในถัง)
@@ -29,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void sendCommand() async {
     setState(() {
       _isSendingCommand = true;
+      // final date = _getTodayDate();
       pumpStatus = "กำลังทำความสะอาด...";
       _audioPlayer.play(AssetSource('sounds/start.mp3'), volume: 1.0);
     });
@@ -38,21 +39,31 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     _debounceTimer = Timer(const Duration(seconds: 2), () async {
-      try {
-        await widget.esp32Service.setPumpState(true);
-        print('✅ Command sent to ESP32');
+try {
+  await widget.esp32Service
+      .setPumpState(true)
+      .timeout(const Duration(seconds: 60), onTimeout: () {
+    throw TimeoutException("ESP32 ไม่ตอบสนองภายใน 60 วินาที");
+  });
 
-        // ✅ อัปเดตข้อมูลเมื่อทำงานเสร็จ
+  print('✅ Command sent to ESP32');
+
+        // ✅ อัปเดต UI
         setState(() {
           lastCleaningDate = _getTodayDate();
           cleaningCount++;
           pumpStatus = "ทำความสะอาดเสร็จแล้ว ✅";
         });
 
-        // 🔊 ✅ เล่นเสียงแจ้งเตือนเมื่อทำความสะอาดเสร็จ (ใน try block)
         await _audioPlayer.play(AssetSource('sounds/done.mp3'), volume: 1.0);
-        
-        // ✅ แสดง SnackBar
+
+        // ✅ บันทึกลง Firestore
+        await FirebaseFirestore.instance.collection('cleaning').add({
+          'date': _getTodayDate(),
+          'status': true,
+          'waterLevel': waterLevel.toInt(),
+        });
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("สั่งงาน ESP32 เสร็จแล้ว ✅")),
@@ -63,10 +74,38 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           pumpStatus = "เกิดข้อผิดพลาด ⚠️";
         });
-         if (mounted) {
+
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted) {
+            setState(() {
+              pumpStatus = "พร้อมใช้งาน";
+              _isSendingCommand = false;
+            });
+          }
+        });
+
+        await FirebaseFirestore.instance.collection('cleaning').add({
+          'date': _getTodayDate(),
+          'status': false,
+          'waterLevel': waterLevel.toInt(),
+        });
+
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("เกิดข้อผิดพลาดในการสั่งงาน ⚠️")),
           );
+
+          Future.delayed(const Duration(seconds: 5), () {
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      HomeScreen(esp32Service: widget.esp32Service),
+                ),
+              );
+            }
+          });
         }
       } finally {
         setState(() {
@@ -76,11 +115,10 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// ฟังก์ชันดึงวันที่ปัจจุบัน
-  String _getTodayDate() {
-    final now = DateTime.now();
-    return "${now.day}/${now.month}/${now.year}  ${now.hour}:${now.minute.toString().padLeft(2, '0')}";
-  }
+  /// ฟังก์ชันแปลงวันเวลาให้อ่านง่าย
+  // String _formatDateTime(DateTime dt) {
+  //   return "${dt.day}/${dt.month}/${dt.year}  ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
+  // }
 
   @override
   void dispose() {
@@ -217,14 +255,14 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (index == 2) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const ScheduleScreen()),
-      );
-    } else if (index == 3) {
-      Navigator.push(
-        context,
         MaterialPageRoute(builder: (_) => const SettingsScreen()),
       );
     }
+  }
+
+  String _getTodayDate() {
+    final now = DateTime.now();
+    return "${now.day}/${now.month}/${now.year}  ${now.hour}:${now.minute.toString().padLeft(2, '0')}";
   }
 
   Widget _buildBottomNav() {
@@ -240,7 +278,6 @@ class _HomeScreenState extends State<HomeScreen> {
           label: "ทำความสะอาด",
         ),
         BottomNavigationBarItem(icon: Icon(Icons.history), label: "ประวัติ"),
-        BottomNavigationBarItem(icon: Icon(Icons.schedule), label: "ตั้งเวลา"),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: "ตั้งค่า"),
       ],
     );
