@@ -18,23 +18,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _debounceTimer;
   bool _isSendingCommand = false;
 
-  // ✅ เพิ่ม AudioPlayer
   final AudioPlayer _audioPlayer = AudioPlayer();
 
-  // ✅ ข้อมูลที่จะแสดงบนหน้า
   String lastCleaningDate = "ยังไม่เคยทำความสะอาด";
   int cleaningCount = 0;
   double waterLevel = 75; // mock data (เช่น % น้ำในถัง)
   String pumpStatus = "พร้อมใช้งาน";
 
   /// ฟังก์ชันสั่ง ESP32
-  /// ฟังก์ชันสั่ง ESP32
-  /// 
-  
   void sendCommand() async {
     setState(() {
       _isSendingCommand = true;
-
       pumpStatus = "กำลังทำความสะอาด...";
       _audioPlayer.play(AssetSource('sounds/start.mp3'), volume: 1.0);
     });
@@ -55,17 +49,25 @@ class _HomeScreenState extends State<HomeScreen> {
           pumpStatus = "ทำความสะอาดเสร็จแล้ว ✅";
         });
 
-        // 🔊 ✅ เล่นเสียงแจ้งเตือนเมื่อทำความสะอาดเสร็จ
+        // 🔊 ✅ เล่นเสียงแจ้งเตือนเมื่อทำความสะอาดเสร็จ (ใน try block)
         await _audioPlayer.play(AssetSource('sounds/done.mp3'), volume: 1.0);
+        
         // ✅ แสดง SnackBar
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("สั่งงาน ESP32 เสร็จแล้ว ✅")),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("สั่งงาน ESP32 เสร็จแล้ว ✅")),
+          );
+        }
       } catch (e) {
         print('❌ Error: $e');
         setState(() {
           pumpStatus = "เกิดข้อผิดพลาด ⚠️";
         });
+         if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("เกิดข้อผิดพลาดในการสั่งงาน ⚠️")),
+          );
+        }
       } finally {
         setState(() {
           _isSendingCommand = false;
@@ -81,6 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xfff3f6fb),
@@ -89,8 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-
-            /// ==== หัวข้อด้านบน ====
             const Text(
               "Solar Panel Cleaner",
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -104,10 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: _isSendingCommand ? Colors.orange : Colors.green,
               ),
             ),
-
             const SizedBox(height: 20),
-
-            /// ==== ปุ่มกลาง FAST CLEANER ====
             ElevatedButton(
               onPressed: _isSendingCommand ? null : sendCommand,
               style: ElevatedButton.styleFrom(
@@ -140,10 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
             ),
-
             const SizedBox(height: 30),
-
-            /// ==== ข้อมูลที่สำคัญ (4 ช่อง) ====
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
@@ -172,7 +173,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// ✅ กล่องแสดงข้อมูล 4 ช่อง
   Widget _buildInfoCard(IconData icon, String title, String value) {
     return Container(
       decoration: BoxDecoration(
@@ -202,28 +202,24 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  int _selectedIndex = 0; // เก็บว่าเมนูไหนถูกเลือกอยู่
+  int _selectedIndex = 0;
 
-  /// ✅ ฟังก์ชันจัดการเมื่อกดไอคอน
   void _onNavTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
 
     if (index == 1) {
-      // 📜 ไปหน้า "ประวัติ"
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const HistoryScreen()),
       );
     } else if (index == 2) {
-      // ⏰ ไปหน้า "ตั้งเวลา"
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const ScheduleScreen()),
       );
     } else if (index == 3) {
-      // ⚙️ ไปหน้า "ตั้งค่า"
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const SettingsScreen()),
@@ -231,7 +227,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// ✅ Bottom Navigation
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
