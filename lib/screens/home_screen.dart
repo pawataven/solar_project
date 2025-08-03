@@ -34,7 +34,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final data = snapshot.docs.first.data();
       setState(() {
         lastCleaningDate = data['date'] ?? "ไม่พบข้อมูล";
-        pumpStatus = data['status'] == true ? "ทำความสะอาดเสร็จแล้ว ✅" : "เกิดข้อผิดพลาด ⚠️";
+        pumpStatus =
+            data['status'] == true ? "ทำความสะอาดเสร็จแล้ว ✅" : "เกิดข้อผิดพลาด ⚠️";
       });
     } else {
       setState(() {
@@ -48,7 +49,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _isSendingCommand = true;
       pumpStatus = "กำลังทำความสะอาด...";
-      _audioPlayer.play(AssetSource('sounds/start.mp3'), volume: 1.0);
+
+      /// ✅ เล่นเสียงเริ่มทำความสะอาด (ถ้าเปิดเสียงอยู่)
+      if (SettingsScreen.isSoundOn) {
+        _audioPlayer.play(AssetSource('sounds/start.mp3'), volume: 1.0);
+      }
     });
 
     if (_debounceTimer?.isActive ?? false) {
@@ -59,9 +64,12 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         await widget.esp32Service
             .setPumpState(true)
-            .timeout(const Duration(seconds: 60), onTimeout: () {
-          throw TimeoutException("ESP32 ไม่ตอบสนองภายใน 60 วินาที");
-        });
+            .timeout(
+          const Duration(seconds: 60),
+          onTimeout: () {
+            throw TimeoutException("ESP32 ไม่ตอบสนองภายใน 60 วินาที");
+          },
+        );
 
         print('✅ Command sent to ESP32');
 
@@ -71,7 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
           'status': true,
         });
 
-        await _audioPlayer.play(AssetSource('sounds/done.mp3'), volume: 1.0);
+        /// ✅ เล่นเสียงทำความสะอาดเสร็จ (ถ้าเปิดเสียงอยู่)
+        if (SettingsScreen.isSoundOn) {
+          await _audioPlayer.play(AssetSource('sounds/done.mp3'), volume: 1.0);
+        }
 
         setState(() {
           pumpStatus = "ทำความสะอาดเสร็จแล้ว ✅";
@@ -90,7 +101,10 @@ class _HomeScreenState extends State<HomeScreen> {
           'status': false,
         });
 
-        await _audioPlayer.play(AssetSource('sounds/error.mp3'), volume: 1.0);
+        /// ✅ เล่นเสียง error (ถ้าเปิดเสียงอยู่)
+        if (SettingsScreen.isSoundOn) {
+          await _audioPlayer.play(AssetSource('sounds/error.mp3'), volume: 1.0);
+        }
 
         setState(() {
           pumpStatus = "เกิดข้อผิดพลาด ⚠️";
@@ -100,8 +114,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               backgroundColor: Colors.red,
-              content: const Text("เกิดข้อผิดพลาดในการสั่งงาน ⚠️",
-                  style: TextStyle(color: Colors.white)),
+              content: const Text(
+                "เกิดข้อผิดพลาดในการสั่งงาน ⚠️",
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           );
         }
@@ -117,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLastCleaning(); // ✅ โหลดข้อมูลล่าสุดทันทีที่เปิดหน้า
+    _loadLastCleaning();
   }
 
   @override
@@ -138,46 +154,62 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              /// ✅ โลโก้บนสุด
+              Center(child: Image.asset("assets/logo.png", height: 150)),
+
               const SizedBox(height: 10),
               const Text(
                 "Solar Panel Cleaner",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 20),
 
-              /// ✅ ปุ่มสั่งทำความสะอาด
-              ElevatedButton(
-                onPressed: _isSendingCommand ? null : sendCommand,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isSendingCommand ? Colors.grey[400] : Colors.blue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+              /// ✅ ปุ่มวงกลม START CLEANING
+              Center(
+                child: InkWell(
+                  onTap: _isSendingCommand ? null : sendCommand,
+                  borderRadius: BorderRadius.circular(100),
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isSendingCommand ? Colors.grey[400] : Colors.blue,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: _isSendingCommand
+                          ? const CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 4,
+                            )
+                          : const Text(
+                              "START",
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 18),
                 ),
-                child: _isSendingCommand
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 3,
-                        ),
-                      )
-                    : const Text(
-                        "START CLEANING",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
               ),
 
               const SizedBox(height: 30),
 
               /// ✅ การ์ดเรียงลงมาเป็นแนวตั้ง
-              _buildInfoCard(Icons.date_range, "ทำความสะอาดล่าสุด", lastCleaningDate),
+              _buildInfoCard(
+                Icons.date_range,
+                "ทำความสะอาดล่าสุด",
+                lastCleaningDate,
+              ),
               _buildInfoCard(Icons.info, "สถานะ", pumpStatus),
             ],
           ),
@@ -229,13 +261,13 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  value,
-                  style: TextStyle(fontSize: 14, color: statusColor),
-                ),
+                Text(value, style: TextStyle(fontSize: 14, color: statusColor)),
               ],
             ),
           ),
@@ -252,9 +284,15 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     if (index == 1) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const HistoryScreen()),
+      );
     } else if (index == 2) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+      );
     }
   }
 
@@ -266,12 +304,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: Colors.blue,
-      unselectedItemColor: Colors.grey,
+      backgroundColor: Colors.blue, // ✅ พื้นหลังสีฟ้า
+      selectedItemColor: Colors.white, // ✅ ไอคอน/ตัวหนังสือที่ถูกเลือกเป็นสีขาว
+      unselectedItemColor: Colors.white70, // ✅ สีจางสำหรับที่ไม่ได้เลือก
       currentIndex: _selectedIndex,
       onTap: _onNavTapped,
       items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.cleaning_services), label: "ทำความสะอาด"),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.cleaning_services),
+          label: "ทำความสะอาด",
+        ),
         BottomNavigationBarItem(icon: Icon(Icons.history), label: "ประวัติ"),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: "ตั้งค่า"),
       ],
