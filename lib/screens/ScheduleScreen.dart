@@ -99,7 +99,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     );
   }
 
-  /// ✅ Card แต่ละรายการ
+  /// Card แต่ละรายการ
   Widget _buildScheduleCard(DateTime schedule, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

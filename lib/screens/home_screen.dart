@@ -22,7 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String lastCleaningDate = "กำลังโหลดข้อมูล...";
   String pumpStatus = "พร้อมใช้งาน";
 
-  /// ✅ โหลดข้อมูลล่าสุดจาก Firestore
+  // โหลดข้อมูลล่าสุดจาก Firestore
   Future<void> _loadLastCleaning() async {
     final snapshot = await FirebaseFirestore.instance
         .collection('cleaning')
@@ -34,8 +34,9 @@ class _HomeScreenState extends State<HomeScreen> {
       final data = snapshot.docs.first.data();
       setState(() {
         lastCleaningDate = data['date'] ?? "ไม่พบข้อมูล";
-        pumpStatus =
-            data['status'] == true ? "ทำความสะอาดเสร็จแล้ว ✅" : "เกิดข้อผิดพลาด ⚠️";
+        pumpStatus = data['status'] == true
+            ? "ทำความสะอาดเสร็จแล้ว ✅"
+            : "เกิดข้อผิดพลาด ⚠️";
       });
     } else {
       setState(() {
@@ -44,13 +45,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// ✅ ฟังก์ชันสั่ง ESP32
+  // ฟังก์ชันสั่ง ESP32
   void sendCommand() async {
     setState(() {
       _isSendingCommand = true;
       pumpStatus = "กำลังทำความสะอาด...";
 
-      /// ✅ เล่นเสียงเริ่มทำความสะอาด (ถ้าเปิดเสียงอยู่)
+      // เล่นเสียงเริ่มทำความสะอาด (ถ้าเปิดเสียงอยู่)
       if (SettingsScreen.isSoundOn) {
         _audioPlayer.play(AssetSource('sounds/start.mp3'), volume: 1.0);
       }
@@ -65,21 +66,21 @@ class _HomeScreenState extends State<HomeScreen> {
         await widget.esp32Service
             .setPumpState(true)
             .timeout(
-          const Duration(seconds: 60),
-          onTimeout: () {
-            throw TimeoutException("ESP32 ไม่ตอบสนองภายใน 60 วินาที");
-          },
-        );
+              const Duration(seconds: 60),
+              onTimeout: () {
+                throw TimeoutException("ESP32 ไม่ตอบสนองภายใน 60 วินาที");
+              },
+            );
 
         print('✅ Command sent to ESP32');
 
-        // ✅ บันทึกข้อมูลสำเร็จ
+        //  บันทึกข้อมูลสำเร็จ
         await FirebaseFirestore.instance.collection('cleaning').add({
           'date': _getTodayDate(),
           'status': true,
         });
 
-        /// ✅ เล่นเสียงทำความสะอาดเสร็จ (ถ้าเปิดเสียงอยู่)
+        // เล่นเสียงทำความสะอาดเสร็จ (ถ้าเปิดเสียงอยู่)
         if (SettingsScreen.isSoundOn) {
           await _audioPlayer.play(AssetSource('sounds/done.mp3'), volume: 1.0);
         }
@@ -101,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'status': false,
         });
 
-        /// ✅ เล่นเสียง error (ถ้าเปิดเสียงอยู่)
+        // เล่นเสียง error (ถ้าเปิดเสียงอยู่)
         if (SettingsScreen.isSoundOn) {
           await _audioPlayer.play(AssetSource('sounds/error.mp3'), volume: 1.0);
         }
@@ -154,17 +155,16 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              /// ✅ โลโก้บนสุด
-              Center(child: Image.asset("assets/logo.png", height: 150)),
+              Center(child: Image.asset("assets/logo-v2.png", height: 150)),
 
               const SizedBox(height: 10),
               const Text(
-                "Solar Panel Cleaner",
+                "Sora  Cleaner",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
 
-              /// ✅ ปุ่มวงกลม START CLEANING
+              // ปุ่มวงกลม START CLEANING
               Center(
                 child: InkWell(
                   onTap: _isSendingCommand ? null : sendCommand,
@@ -204,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 30),
 
-              /// ✅ การ์ดเรียงลงมาเป็นแนวตั้ง
+          
               _buildInfoCard(
                 Icons.date_range,
                 "ทำความสะอาดล่าสุด",
@@ -218,7 +218,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// ✅ การ์ดสวย ๆ
   Widget _buildInfoCard(IconData icon, String title, String value) {
     Color statusColor = Colors.black54;
     if (value.contains("เสร็จแล้ว")) {
@@ -243,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          /// ✅ ไอคอน
+         
           Container(
             decoration: BoxDecoration(
               color: Colors.blue.withOpacity(0.1),
@@ -254,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 16),
 
-          /// ✅ ข้อความ
+        
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,9 +303,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBottomNav() {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
-      backgroundColor: Colors.blue, // ✅ พื้นหลังสีฟ้า
-      selectedItemColor: Colors.white, // ✅ ไอคอน/ตัวหนังสือที่ถูกเลือกเป็นสีขาว
-      unselectedItemColor: Colors.white70, // ✅ สีจางสำหรับที่ไม่ได้เลือก
+      backgroundColor: Colors.blue, 
+      selectedItemColor: Colors.white, 
+      unselectedItemColor: Colors.white70, 
       currentIndex: _selectedIndex,
       onTap: _onNavTapped,
       items: const [

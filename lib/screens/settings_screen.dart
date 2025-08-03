@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
-  /// ✅ ตัวแปร static ให้หน้าอื่นเข้าถึงได้ เช่น HomeScreen
+  ///  ตัวแปร static ให้หน้าอื่นเข้าถึงได้ เช่น HomeScreen
   static bool isSoundOn = true;
 
   @override
@@ -18,31 +18,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSettings(); // ✅ โหลดค่าจาก SharedPreferences
+    _loadSettings(); //  โหลดค่าจาก SharedPreferences
   }
 
-  /// ✅ โหลดค่าจาก SharedPreferences
+  ///  โหลดค่าจาก SharedPreferences
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       notificationSound = prefs.getBool('notificationSound') ?? true;
       autoClean = prefs.getBool('autoClean') ?? false;
 
-      /// ✅ อัปเดต static ให้หน้าอื่นเรียกใช้ได้
+      ///  อัปเดต static ให้หน้าอื่นเรียกใช้ได้
       SettingsScreen.isSoundOn = notificationSound;
     });
   }
 
-  /// ✅ บันทึกค่าเสียง
+  ///  บันทึกค่าเสียง
   Future<void> _saveSoundSetting(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notificationSound', value);
-
-    /// ✅ อัปเดต static ให้หน้าอื่นเรียกใช้ได้
     SettingsScreen.isSoundOn = value;
   }
 
-  /// ✅ บันทึกค่าล้างอัตโนมัติ
+  ///  บันทึกค่าล้างอัตโนมัติ
   Future<void> _saveAutoCleanSetting(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('autoClean', value);
@@ -75,13 +73,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: notificationSound,
             onChanged: (val) {
               setState(() => notificationSound = val);
-
-              /// ✅ บันทึก & อัปเดตค่า static
               _saveSoundSetting(val);
             },
           ),
           const SizedBox(height: 10),
-
           _buildSectionTitle("การทำความสะอาด"),
           _buildSwitchTile(
             title: "ล้างอัตโนมัติ",
@@ -92,12 +87,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _saveAutoCleanSetting(val);
             },
           ),
+          const SizedBox(height: 30),
+          _buildSectionTitle("เกี่ยวกับแอป"),
+          ListTile(
+            leading: const Icon(Icons.info, color: Colors.blue),
+            title: const Text("เวอร์ชันแอป"),
+            subtitle: const Text("v1.1.1"),
+          ),
+          ListTile(
+            leading: const Icon(Icons.person, color: Colors.green),
+            title: const Text("ผู้พัฒนา"),
+            subtitle: const Text("Dawn company"),
+          ),
         ],
       ),
     );
   }
 
-  /// ✅ หัวข้อ Section
+  ///  หัวข้อ Section
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, top: 16),
@@ -112,7 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// ✅ Switch Setting
+  ///  Switch Setting
   Widget _buildSwitchTile({
     required String title,
     required String subtitle,
