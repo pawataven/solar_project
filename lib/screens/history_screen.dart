@@ -82,7 +82,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  /// ✅ Card แสดงข้อมูลแต่ละรายการ (ตัด waterLevel ออกแล้ว)
+  ///  Card แสดงข้อมูลแต่ละรายการ  
   Widget _buildHistoryCard(String date, bool status) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
