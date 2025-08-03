@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  /// ✅ ตัวแปร static ให้หน้าอื่นเข้าถึงได้ เช่น HomeScreen
+  static bool isSoundOn = true;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -10,7 +14,39 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool notificationSound = true;
   bool autoClean = false;
-  double pumpPower = 50;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings(); // ✅ โหลดค่าจาก SharedPreferences
+  }
+
+  /// ✅ โหลดค่าจาก SharedPreferences
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      notificationSound = prefs.getBool('notificationSound') ?? true;
+      autoClean = prefs.getBool('autoClean') ?? false;
+
+      /// ✅ อัปเดต static ให้หน้าอื่นเรียกใช้ได้
+      SettingsScreen.isSoundOn = notificationSound;
+    });
+  }
+
+  /// ✅ บันทึกค่าเสียง
+  Future<void> _saveSoundSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notificationSound', value);
+
+    /// ✅ อัปเดต static ให้หน้าอื่นเรียกใช้ได้
+    SettingsScreen.isSoundOn = value;
+  }
+
+  /// ✅ บันทึกค่าล้างอัตโนมัติ
+  Future<void> _saveAutoCleanSetting(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('autoClean', value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +73,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: "เสียงแจ้งเตือน",
             subtitle: "เปิดหรือปิดเสียงเมื่อทำความสะอาดเสร็จ",
             value: notificationSound,
-            onChanged: (val) => setState(() => notificationSound = val),
+            onChanged: (val) {
+              setState(() => notificationSound = val);
+
+              /// ✅ บันทึก & อัปเดตค่า static
+              _saveSoundSetting(val);
+            },
           ),
           const SizedBox(height: 10),
 
@@ -46,28 +87,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: "ล้างอัตโนมัติ",
             subtitle: "ให้ระบบล้างตามเวลาที่ตั้งไว้โดยอัตโนมัติ",
             value: autoClean,
-            onChanged: (val) => setState(() => autoClean = val),
-          ),
-          const SizedBox(height: 10),
-
-          _buildSliderTile(
-            title: "กำลังปั๊ม",
-            subtitle: "ปรับความแรงของปั๊ม (0 - 100%)",
-            value: pumpPower,
-            onChanged: (val) => setState(() => pumpPower = val),
-          ),
-
-          const SizedBox(height: 30),
-          _buildSectionTitle("เกี่ยวกับแอป"),
-          ListTile(
-            leading: const Icon(Icons.info, color: Colors.blue),
-            title: const Text("เวอร์ชันแอป"),
-            subtitle: const Text("v1.0.0"),
-          ),
-          ListTile(
-            leading: const Icon(Icons.person, color: Colors.green),
-            title: const Text("ผู้พัฒนา"),
-            subtitle: const Text("Dawn company"),
+            onChanged: (val) {
+              setState(() => autoClean = val);
+              _saveAutoCleanSetting(val);
+            },
           ),
         ],
       ),
@@ -115,49 +138,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         subtitle: Text(subtitle),
         value: value,
         onChanged: onChanged,
-      ),
-    );
-  }
-
-  /// ✅ Slider Setting
-  Widget _buildSliderTile({
-    required String title,
-    required String subtitle,
-    required double value,
-    required ValueChanged<double> onChanged,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.15),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 16)),
-          const SizedBox(height: 4),
-          Text(subtitle, style: const TextStyle(color: Colors.grey)),
-          Slider(
-            value: value,
-            min: 0,
-            max: 100,
-            divisions: 10,
-            label: "${value.toInt()}%",
-            activeColor: Colors.blue,
-            onChanged: onChanged,
-          ),
-        ],
       ),
     );
   }
