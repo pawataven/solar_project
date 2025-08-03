@@ -19,17 +19,34 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isSendingCommand = false;
 
   final AudioPlayer _audioPlayer = AudioPlayer();
-  String date = "";
-  String lastCleaningDate = "ยังไม่เคยทำความสะอาด";
-  int cleaningCount = 0;
-  double waterLevel = 75; // mock data (เช่น % น้ำในถัง)
+  String lastCleaningDate = "กำลังโหลดข้อมูล...";
   String pumpStatus = "พร้อมใช้งาน";
 
-  /// ฟังก์ชันสั่ง ESP32
+  /// ✅ โหลดข้อมูลล่าสุดจาก Firestore
+  Future<void> _loadLastCleaning() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('cleaning')
+        .orderBy('date', descending: true)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      final data = snapshot.docs.first.data();
+      setState(() {
+        lastCleaningDate = data['date'] ?? "ไม่พบข้อมูล";
+        pumpStatus = data['status'] == true ? "ทำความสะอาดเสร็จแล้ว ✅" : "เกิดข้อผิดพลาด ⚠️";
+      });
+    } else {
+      setState(() {
+        lastCleaningDate = "ยังไม่เคยทำความสะอาด";
+      });
+    }
+  }
+
+  /// ✅ ฟังก์ชันสั่ง ESP32
   void sendCommand() async {
     setState(() {
       _isSendingCommand = true;
-      // final date = _getTodayDate();
       pumpStatus = "กำลังทำความสะอาด...";
       _audioPlayer.play(AssetSource('sounds/start.mp3'), volume: 1.0);
     });
@@ -39,29 +56,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     _debounceTimer = Timer(const Duration(seconds: 2), () async {
-try {
-  await widget.esp32Service
-      .setPumpState(true)
-      .timeout(const Duration(seconds: 60), onTimeout: () {
-    throw TimeoutException("ESP32 ไม่ตอบสนองภายใน 60 วินาที");
-  });
+      try {
+        await widget.esp32Service
+            .setPumpState(true)
+            .timeout(const Duration(seconds: 60), onTimeout: () {
+          throw TimeoutException("ESP32 ไม่ตอบสนองภายใน 60 วินาที");
+        });
 
-  print('✅ Command sent to ESP32');
+        print('✅ Command sent to ESP32');
 
-        // ✅ อัปเดต UI
-        setState(() {
-          lastCleaningDate = _getTodayDate();
-          cleaningCount++;
-          pumpStatus = "ทำความสะอาดเสร็จแล้ว ✅";
+        // ✅ บันทึกข้อมูลสำเร็จ
+        await FirebaseFirestore.instance.collection('cleaning').add({
+          'date': _getTodayDate(),
+          'status': true,
         });
 
         await _audioPlayer.play(AssetSource('sounds/done.mp3'), volume: 1.0);
 
-        // ✅ บันทึกลง Firestore
-        await FirebaseFirestore.instance.collection('cleaning').add({
-          'date': _getTodayDate(),
-          'status': true,
-          'waterLevel': waterLevel.toInt(),
+        setState(() {
+          pumpStatus = "ทำความสะอาดเสร็จแล้ว ✅";
+          lastCleaningDate = _getTodayDate();
         });
 
         if (mounted) {
@@ -71,43 +85,28 @@ try {
         }
       } catch (e) {
         print('❌ Error: $e');
+        await FirebaseFirestore.instance.collection('cleaning').add({
+          'date': _getTodayDate(),
+          'status': false,
+        });
+
+        await _audioPlayer.play(AssetSource('sounds/error.mp3'), volume: 1.0);
+
         setState(() {
           pumpStatus = "เกิดข้อผิดพลาด ⚠️";
         });
 
-        Future.delayed(const Duration(seconds: 5), () {
-          if (mounted) {
-            setState(() {
-              pumpStatus = "พร้อมใช้งาน";
-              _isSendingCommand = false;
-            });
-          }
-        });
-
-        await FirebaseFirestore.instance.collection('cleaning').add({
-          'date': _getTodayDate(),
-          'status': false,
-          'waterLevel': waterLevel.toInt(),
-        });
-
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("เกิดข้อผิดพลาดในการสั่งงาน ⚠️")),
+            SnackBar(
+              backgroundColor: Colors.red,
+              content: const Text("เกิดข้อผิดพลาดในการสั่งงาน ⚠️",
+                  style: TextStyle(color: Colors.white)),
+            ),
           );
-
-          Future.delayed(const Duration(seconds: 5), () {
-            if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      HomeScreen(esp32Service: widget.esp32Service),
-                ),
-              );
-            }
-          });
         }
       } finally {
+        _loadLastCleaning();
         setState(() {
           _isSendingCommand = false;
         });
@@ -115,10 +114,11 @@ try {
     });
   }
 
-  /// ฟังก์ชันแปลงวันเวลาให้อ่านง่าย
-  // String _formatDateTime(DateTime dt) {
-  //   return "${dt.day}/${dt.month}/${dt.year}  ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}";
-  // }
+  @override
+  void initState() {
+    super.initState();
+    _loadLastCleaning(); // ✅ โหลดข้อมูลล่าสุดทันทีที่เปิดหน้า
+  }
 
   @override
   void dispose() {
@@ -133,108 +133,112 @@ try {
       backgroundColor: const Color(0xfff3f6fb),
       bottomNavigationBar: _buildBottomNav(),
       body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            const Text(
-              "Solar Panel Cleaner",
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              "สถานะระบบ: $pumpStatus",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: _isSendingCommand ? Colors.orange : Colors.green,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(height: 10),
+              const Text(
+                "Solar Panel Cleaner",
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _isSendingCommand ? null : sendCommand,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _isSendingCommand
-                    ? Colors.grey[400]
-                    : Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 80,
-                  vertical: 18,
-                ),
-              ),
-              child: _isSendingCommand
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 3,
-                      ),
-                    )
-                  : const Text(
-                      "START CLEANING",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-            ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                padding: const EdgeInsets.all(20),
-                children: [
-                  _buildInfoCard(Icons.date_range, "ล่าสุด", lastCleaningDate),
-                  _buildInfoCard(
-                    Icons.countertops,
-                    "จำนวนครั้ง",
-                    "$cleaningCount ครั้ง",
+              const SizedBox(height: 10),
+
+              /// ✅ ปุ่มสั่งทำความสะอาด
+              ElevatedButton(
+                onPressed: _isSendingCommand ? null : sendCommand,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _isSendingCommand ? Colors.grey[400] : Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
                   ),
-                  _buildInfoCard(
-                    Icons.water_drop,
-                    "ระดับน้ำ",
-                    "${waterLevel.toInt()}%",
-                  ),
-                  _buildInfoCard(Icons.info, "สถานะ", pumpStatus),
-                ],
+                  padding: const EdgeInsets.symmetric(horizontal: 80, vertical: 18),
+                ),
+                child: _isSendingCommand
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : const Text(
+                        "START CLEANING",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 30),
+
+              /// ✅ การ์ดเรียงลงมาเป็นแนวตั้ง
+              _buildInfoCard(Icons.date_range, "ทำความสะอาดล่าสุด", lastCleaningDate),
+              _buildInfoCard(Icons.info, "สถานะ", pumpStatus),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  /// ✅ การ์ดสวย ๆ
   Widget _buildInfoCard(IconData icon, String title, String value) {
+    Color statusColor = Colors.black54;
+    if (value.contains("เสร็จแล้ว")) {
+      statusColor = Colors.green;
+    } else if (value.contains("ผิดพลาด")) {
+      statusColor = Colors.red;
+    }
+
     return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            blurRadius: 6,
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Icon(icon, size: 32, color: Colors.blue),
-          const Spacer(),
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          /// ✅ ไอคอน
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.blue.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(10),
+            child: Icon(icon, size: 32, color: Colors.blue),
           ),
-          Text(value, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(width: 16),
+
+          /// ✅ ข้อความ
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 14, color: statusColor),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -248,15 +252,9 @@ try {
     });
 
     if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const HistoryScreen()),
-      );
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
     } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const SettingsScreen()),
-      );
+      Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
     }
   }
 
@@ -273,10 +271,7 @@ try {
       currentIndex: _selectedIndex,
       onTap: _onNavTapped,
       items: const [
-        BottomNavigationBarItem(
-          icon: Icon(Icons.cleaning_services),
-          label: "ทำความสะอาด",
-        ),
+        BottomNavigationBarItem(icon: Icon(Icons.cleaning_services), label: "ทำความสะอาด"),
         BottomNavigationBarItem(icon: Icon(Icons.history), label: "ประวัติ"),
         BottomNavigationBarItem(icon: Icon(Icons.settings), label: "ตั้งค่า"),
       ],

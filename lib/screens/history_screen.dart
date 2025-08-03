@@ -30,7 +30,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return {
         'date': data['date'] ?? '',
         'status': data['status'] ?? false,
-        'waterLevel': data['waterLevel'] ?? 0,
       };
     }).toList();
   }
@@ -75,7 +74,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
               return _buildHistoryCard(
                 item['date'],
                 item['status'],
-                item['waterLevel'],
               );
             },
           );
@@ -84,8 +82,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  /// ✅ Card แสดงข้อมูลแต่ละรายการ
-  Widget _buildHistoryCard(String date, bool status, int waterLevel) {
+  /// ✅ Card แสดงข้อมูลแต่ละรายการ (ตัด waterLevel ออกแล้ว)
+  Widget _buildHistoryCard(String date, bool status) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -100,37 +98,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(
-                status ? Icons.check_circle : Icons.error,
-                color: status ? Colors.green : Colors.redAccent,
-                size: 32,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  date,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              Text(
-                status ? "สำเร็จ" : "ล้มเหลว",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: status ? Colors.green : Colors.redAccent,
-                ),
-              ),
-            ],
+          Icon(
+            status ? Icons.check_circle : Icons.error,
+            color: status ? Colors.green : Colors.redAccent,
+            size: 32,
           ),
-          const SizedBox(height: 8),
-          Text("ระดับน้ำ: $waterLevel%", style: const TextStyle(fontSize: 14)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              date,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Text(
+            status ? "สำเร็จ" : "ล้มเหลว",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: status ? Colors.green : Colors.redAccent,
+            ),
+          ),
         ],
       ),
     );
