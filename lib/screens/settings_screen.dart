@@ -40,11 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     SettingsScreen.isSoundOn = value;
   }
 
-  ///  บันทึกค่าล้างอัตโนมัติ
-  Future<void> _saveAutoCleanSetting(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('autoClean', value);
-  }
 
   @override
   Widget build(BuildContext context) {
